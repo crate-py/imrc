@@ -1,0 +1,15 @@
+[package]
+name = "imrc"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "imrc"
+crate-type = ["cdylib"]
+
+[dependencies]
+im-rc = "15.1.0"
+
+[dependencies.pyo3]
+version = "0.18.1"
+features = ["abi3-py38"]
