@@ -244,7 +244,7 @@ def test_update_with_multiple_arguments():
 def test_update_one_argument():
     x = HashMap(a=1)
 
-    assert x.update({"b": "2"}) == HashMap(a=1, b=2)
+    assert x.update({"b": 2}) == HashMap(a=1, b=2)
 
 
 def test_update_no_arguments():
@@ -309,3 +309,16 @@ def test_convert_hashtriemap():
 def test_fast_convert_hashtriemap():
     m = HashMap({i: i * 2 for i in range(3)})
     assert HashMap.convert(m) is m
+
+
+def test_more_eq():
+    # Non-pyrsistent-test-suite test
+    o = object()
+
+    assert HashMap([(o, o), (1, o)]) == HashMap([(o, o), (1, o)])
+    assert HashMap([(o, "foo")]) == HashMap([(o, "foo")])
+    assert HashMap() == HashMap([])
+
+    assert HashMap({1: 2}) != HashMap({1: 3})
+    assert HashMap({o: 1}) != HashMap({o: o})
+    assert HashMap([]) != HashMap([(o, 1)])

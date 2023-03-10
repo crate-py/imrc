@@ -96,7 +96,6 @@ def test_contains():
     assert 4 not in s
 
 
-@pytest.mark.xfail(reason="Can't figure out inheriting collections.abc yet")
 def test_supports_set_operations():
     s1 = HashSet([1, 2, 3])
     s2 = HashSet([3, 4, 5])
@@ -114,7 +113,6 @@ def test_supports_set_operations():
     assert s1.symmetric_difference(s2) == s1 ^ s2
 
 
-@pytest.mark.xfail(reason="Can't figure out inheriting collections.abc yet")
 def test_supports_set_comparisons():
     s1 = HashSet([1, 2, 3])
     s3 = HashSet([1, 2])
@@ -151,3 +149,33 @@ def test_update_no_elements():
 
 def test_iterable():
     assert HashSet(iter("a")) == HashSet(iter("a"))
+
+
+def test_more_eq():
+    # Non-pyrsistent-test-suite test
+    o = object()
+
+    assert HashSet([o]) == HashSet([o])
+    assert HashSet([o, o]) == HashSet([o, o])
+    assert HashSet([o]) == HashSet([o, o])
+    assert HashSet() == HashSet([])
+    assert not (HashSet([1, 2]) == HashSet([1, 3]))
+    assert not (HashSet([o, 1]) == HashSet([o, o]))
+    assert not (HashSet([]) == HashSet([o]))
+
+    assert HashSet([1, 2]) != HashSet([1, 3])
+    assert HashSet([]) != HashSet([o])
+    assert not (HashSet([o]) != HashSet([o]))
+    assert not (HashSet([o, o]) != HashSet([o, o]))
+    assert not (HashSet([o]) != HashSet([o, o]))
+    assert not (HashSet() != HashSet([]))
+
+
+def test_more_set_comparisons():
+    s = HashSet([1, 2, 3])
+
+    assert s == s
+    assert not (s < s)
+    assert s <= s
+    assert not (s > s)
+    assert s >= s

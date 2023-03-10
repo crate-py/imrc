@@ -142,11 +142,25 @@ impl HashMapPy {
         format!("HashMap({{{}}})", contents.collect::<Vec<_>>().join(", "))
     }
 
-    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
         match op {
-            CompareOp::Eq => (self.inner.len() == other.inner.len()).into_py(py),
-            CompareOp::Ne => (self.inner.len() != other.inner.len()).into_py(py),
-            _ => py.NotImplemented(),
+            CompareOp::Eq => Ok((self.inner.len() == other.inner.len()
+                && self
+                    .inner
+                    .iter()
+                    .map(|(k1, v1)| (v1, other.inner.get(&k1)))
+                    .map(|(v1, v2)| PyAny::eq(v1.extract(py)?, v2))
+                    .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
+            CompareOp::Ne => Ok((self.inner.len() != other.inner.len()
+                || self
+                    .inner
+                    .iter()
+                    .map(|(k1, v1)| (v1, other.inner.get(&k1)))
+                    .map(|(v1, v2)| PyAny::ne(v1.extract(py)?, v2))
+                    .all(|r| r.unwrap_or(true)))
+            .into_py(py)),
+            _ => Ok(py.NotImplemented()),
         }
     }
 
@@ -255,6 +269,10 @@ impl<'source> FromPyObject<'source> for HashSetPy {
     }
 }
 
+fn is_subset(one: &HashSet<Key>, two: &HashSet<Key>) -> bool {
+    one.iter().all(|v| two.contains(v))
+}
+
 #[pymethods]
 impl HashSetPy {
     #[new]
@@ -266,6 +284,22 @@ impl HashSetPy {
                 inner: HashSet::new(),
             }
         }
+    }
+
+    fn __and__(&self, other: &Self) -> Self {
+        self.intersection(&other)
+    }
+
+    fn __or__(&self, other: &Self) -> Self {
+        self.union(&other)
+    }
+
+    fn __sub__(&self, other: &Self) -> Self {
+        self.difference(&other)
+    }
+
+    fn __xor__(&self, other: &Self) -> Self {
+        self.symmetric_difference(&other)
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<KeyIterator>> {
@@ -292,11 +326,19 @@ impl HashSetPy {
         format!("HashSet({{{}}})", contents.collect::<Vec<_>>().join(", "))
     }
 
-    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyObject {
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
         match op {
-            CompareOp::Eq => (self.inner.len() == other.inner.len()).into_py(py),
-            CompareOp::Ne => (self.inner.len() != other.inner.len()).into_py(py),
-            _ => py.NotImplemented(),
+            CompareOp::Eq => Ok((self.inner.len() == other.inner.len()
+                && is_subset(&self.inner, &other.inner))
+            .into_py(py)),
+            CompareOp::Ne => Ok((self.inner.len() != other.inner.len()
+                || self.inner.iter().any(|k| !other.inner.contains(k)))
+            .into_py(py)),
+            CompareOp::Lt => Ok((self.inner.len() < other.inner.len()
+                && is_subset(&self.inner, &other.inner))
+            .into_py(py)),
+            CompareOp::Le => Ok(is_subset(&self.inner, &other.inner).into_py(py)),
+            _ => Ok(py.NotImplemented()),
         }
     }
 
@@ -324,6 +366,69 @@ impl HashSetPy {
             }),
             false => Err(PyKeyError::new_err(value)),
         }
+    }
+
+    fn difference(&self, other: &Self) -> Self {
+        let mut inner = self.inner.clone();
+        for value in other.inner.iter() {
+            inner.remove(value);
+        }
+        HashSetPy { inner }
+    }
+
+    fn intersection(&self, other: &Self) -> Self {
+        let mut inner: HashSet<Key> = HashSet::new();
+        let larger: &HashSet<Key>;
+        let iter;
+        if self.inner.len() > other.inner.len() {
+            larger = &self.inner;
+            iter = other.inner.iter();
+        } else {
+            larger = &other.inner;
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            if larger.contains(value) {
+                inner.insert(value.to_owned());
+            }
+        }
+        HashSetPy { inner }
+    }
+
+    fn symmetric_difference(&self, other: &Self) -> Self {
+        let mut inner: HashSet<Key>;
+        let iter;
+        if self.inner.len() > other.inner.len() {
+            inner = self.inner.clone();
+            iter = other.inner.iter();
+        } else {
+            inner = other.inner.clone();
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            if inner.contains(value) {
+                inner.remove(value);
+            } else {
+                inner.insert(value.to_owned());
+            }
+        }
+        HashSetPy { inner }
+    }
+
+    fn union(&self, other: &Self) -> Self {
+        let mut inner: HashSet<Key>;
+        let iter;
+        if self.inner.len() > other.inner.len() {
+            inner = self.inner.clone();
+            iter = other.inner.iter();
+        } else {
+            inner = other.inner.clone();
+            iter = self.inner.iter();
+        }
+        for value in iter {
+            inner.insert(value.to_owned());
+        }
+        HashSetPy { inner }
     }
 
     #[pyo3(signature = (*iterables))]
@@ -413,6 +518,14 @@ impl VectorPy {
                     .zip(other.inner.iter())
                     .map(|(e1, e2)| PyAny::eq(e1.extract(py)?, e2))
                     .all(|r| r.unwrap_or(false)))
+            .into_py(py)),
+            CompareOp::Ne => Ok((self.inner.len() != other.inner.len()
+                || self
+                    .inner
+                    .iter()
+                    .zip(other.inner.iter())
+                    .map(|(e1, e2)| PyAny::ne(e1.extract(py)?, e2))
+                    .any(|r| r.unwrap_or(true)))
             .into_py(py)),
             _ => Ok(py.NotImplemented()),
         }

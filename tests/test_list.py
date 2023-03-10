@@ -106,3 +106,22 @@ def test_hashing():
 def test_sequence():
     m = Vector("asdf")
     assert m == Vector(["a", "s", "d", "f"])
+
+
+def test_more_eq():
+    # Non-pyrsistent-test-suite test
+    o = object()
+
+    assert Vector([o, o]) == Vector([o, o])
+    assert Vector([o]) == Vector([o])
+    assert Vector() == Vector([])
+    assert not (Vector([1, 2]) == Vector([1, 3]))
+    assert not (Vector([o]) == Vector([o, o]))
+    assert not (Vector([]) == Vector([o]))
+
+    assert Vector([1, 2]) != Vector([1, 3])
+    assert Vector([o]) != Vector([o, o])
+    assert Vector([]) != Vector([o])
+    assert not (Vector([o, o]) != Vector([o, o]))
+    assert not (Vector([o]) != Vector([o]))
+    assert not (Vector() != Vector([]))
