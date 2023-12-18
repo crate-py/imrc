@@ -84,7 +84,7 @@ jobs:
           args: --release --out dist --interpreter '3.8 3.9 3.10 3.11 pypy3.8 pypy3.9'
           manylinux: auto
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -107,7 +107,7 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter --sdist
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
@@ -129,7 +129,7 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: dist
